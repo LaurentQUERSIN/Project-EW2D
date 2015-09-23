@@ -13,8 +13,6 @@ using Stormancer.Diagnostics;
 
 public class GameManager : MonoBehaviour
 {
-	public bool							connecting = false;
-	public bool							connected = false;
 	public bool 						gamePaused = true;
 	public ConnexionPanel 				connexionPanel;
 	public Player 						localPlayer;
@@ -24,67 +22,75 @@ public class GameManager : MonoBehaviour
 	private Scene 						_scene;
 	private Client 						_client;
 	private Dictionary<uint, Player>	_players;
-	
+    private bool _connecting = false;
+    private bool _connected = false;
 
-	public void Connect()
+
+    public void Connect()
 	{
-		if (connecting == true)
+		if (_connecting == true)
 			return;
-		if (connexionPanel.username.text == "")
-			connexionPanel.errorText.text = "please enter a user name.";
-		else
-		{
-			connecting = true;
-			Debug.Log("starting connection");
-			UniRx.MainThreadDispatcher.Initialize();
-			var Config = ClientConfiguration.ForAccount("7794da14-4d7d-b5b5-a717-47df09ca8492", "projectew2d");
-			var client = new Client(Config);
-			_client = client;
+        if (connexionPanel.username.text == "")
+            connexionPanel.errorText.text = "please enter a user name.";
+        else
+        {
+            _connecting = true;
+            Debug.Log("starting connection");
+            UniRx.MainThreadDispatcher.Initialize();
+            var Config = ClientConfiguration.ForAccount("7794da14-4d7d-b5b5-a717-47df09ca8492", "projectew2d");
+            var client = new Client(Config);
+            _client = client;
 
-			localPlayer = new Player(0, connexionPanel.username.text, 0);
-			localPlayer.ship = playerShip;
-			localPlayer.color_red = connexionPanel.redSlider.value;
-			localPlayer.color_blue = connexionPanel.blueSlider.value;
-			localPlayer.color_green = connexionPanel.greenSlider.value;
-			playerShip.GetComponent<Renderer>().material.color = new Color(localPlayer.color_red, localPlayer.color_green, localPlayer.color_blue);
+            localPlayer = new Player(0, connexionPanel.username.text, 0);
+            localPlayer.ship = playerShip;
+            localPlayer.color_red = connexionPanel.redSlider.value;
+            localPlayer.color_blue = connexionPanel.blueSlider.value;
+            localPlayer.color_green = connexionPanel.greenSlider.value;
+            playerShip.GetComponent<Renderer>().material.color = new Color(localPlayer.color_red, localPlayer.color_green, localPlayer.color_blue);
 
-			Debug.Log("config complete");
-			client.GetPublicScene("test", (myGameObject)localPlayer).ContinueWith ( task =>
-			                                                              {
-				var scene = task.Result;
-				_scene = scene;
-				Debug.Log ("configuring routes");
-				_scene.AddRoute("chat", onChat);
-				_scene.AddRoute("update_position", onUpdatePosition);
-				_scene.AddRoute("get_id", onGetId);
-				_scene.AddRoute("update_status", onUpdateStatus);
-				Debug.Log ("connecting to remote scene");
-				_scene.Connect();
-				UniRx.MainThreadDispatcher.Post(() =>
-				                                {
-					checkIfConnected();
-				});
-			});
-			Debug.Log ("tentative de connexion terminée, en attente de la réponse");
-		}
-	}
-
-	public void checkIfConnected()
-	{
-		connecting = false;
-
-		if (_scene.Connected == false)
-		{
-			connexionPanel.errorText.text = "Connexion failed";
-			Debug.Log ("connexion failed");
-		}
-		else
-		{
-			Debug.Log ("connexion succeded");
-			connexionPanel.gameObject.SetActive(false);
-			playerShip.GetComponent<Renderer>().enabled = true;
-			gamePaused = false;
-			connected = true;
+            Debug.Log("config complete");
+            client.GetPublicScene("test", (myGameObject)localPlayer).ContinueWith(task =>
+           {
+               if (task.IsFaulted)
+               {
+                   Debug.Log("connection failed, cannot get scene : " + task.Exception.Message);
+                   _connecting = false;
+               }
+               else
+               {
+                   var scene = task.Result;
+                   _scene = scene;
+                   Debug.Log("configuring routes");
+                   _scene.AddRoute("chat", onChat);
+                   _scene.AddRoute("update_position", onUpdatePosition);
+                   _scene.AddRoute("get_id", onGetId);
+                   _scene.AddRoute("update_status", onUpdateStatus);
+                   Debug.Log("connecting to remote scene");
+                   _scene.Connect().ContinueWith(t =>
+                   {
+                       if (_scene.Connected)
+                       {
+                           _connected = true;
+                           _connecting = false;
+                           Debug.Log("connection successful");
+                           StormancerActionHandler.Post(() => {
+                               connexionPanel.gameObject.SetActive(false);
+                               playerShip.GetComponent<Renderer>().enabled = true;
+                               gamePaused = false;
+                               _connected = true;
+                           });
+                       }
+                       else
+                       {
+                           Debug.Log("connection failed: " + t.Exception.InnerException.Message);
+                           _connecting = false;
+                           StormancerActionHandler.Post(() => {
+                               connexionPanel.errorText.text = "Connexion failed";
+                           });
+                       }
+                   });
+               }
+           });
 		}
 	}
 
@@ -184,7 +190,7 @@ public class GameManager : MonoBehaviour
 
 	void Update()
 	{
-		if (connected == true && _scene.Connected)
+		if (_connected == true && _scene.Connected)
 		{
 			localPlayer.updatePositionFromShip();
 			_scene.SendPacket("update_position", s =>
