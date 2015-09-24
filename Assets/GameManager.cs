@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Stormancer.Core;
 using System.IO;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System;
 using System.Text;
-using System.Collections.Concurrent;
 using Stormancer.Diagnostics;
 
 public class GameManager : MonoBehaviour
@@ -21,7 +21,7 @@ public class GameManager : MonoBehaviour
 
 	private Scene 						_scene;
 	private Client 						_client;
-	private Dictionary<uint, Player>	_players;
+	private ConcurrentDictionary<long, Player>	_players = new ConcurrentDictionary<long, Player>();
     private bool _connecting = false;
     private bool _connected = false;
 
@@ -54,6 +54,10 @@ public class GameManager : MonoBehaviour
                if (task.IsFaulted)
                {
                    Debug.Log("connection failed, cannot get scene : " + task.Exception.Message);
+                   StormancerActionHandler.Post(() =>
+                   {
+                       connexionPanel.errorText.text = "Connexion failed";
+                   });
                    _connecting = false;
                }
                else
@@ -63,6 +67,8 @@ public class GameManager : MonoBehaviour
                    Debug.Log("configuring routes");
                    _scene.AddRoute("chat", onChat);
                    _scene.AddRoute("update_position", onUpdatePosition);
+                   _scene.AddRoute("player_connected", onPlayerConnected);
+                   _scene.AddRoute("player_disconnected", onPlayerDisconnected);
                    _scene.AddRoute("get_id", onGetId);
                    _scene.AddRoute("update_status", onUpdateStatus);
                    Debug.Log("connecting to remote scene");
@@ -96,28 +102,29 @@ public class GameManager : MonoBehaviour
 
 	public void onUpdatePosition(Packet<IScenePeer> obj)
 	{
-		using (var reader = new BinaryReader(obj.Stream))
-		{
-			while (reader.BaseStream.Position < reader.BaseStream.Length)
-			{
-				var id = reader.ReadUInt32();
-				var x = reader.ReadSingle();
-				var y = reader.ReadSingle();
-				var rot = reader.ReadSingle();
-				var vx = reader.ReadSingle();
-				var vy = reader.ReadSingle();
-				var updateTime = reader.ReadInt64();
+        var reader = new BinaryReader(obj.Stream, Encoding.UTF8);
+        while (reader.BaseStream.Position < reader.BaseStream.Length)
+        {
+            var id = reader.ReadInt64();
+            var x = reader.ReadSingle();
+            var y = reader.ReadSingle();
+            var rot = reader.ReadSingle();
+            var vx = reader.ReadSingle();
+            var vy = reader.ReadSingle();
 
-				if (_players.ContainsKey(id))
-					_players[id].updatePosition(x, y, rot, vx, vy, updateTime);
-			}
-			reader.Close ();
-		}
+            if (_players.ContainsKey(id) == true && localPlayer.id != id)
+            {
+                StormancerActionHandler.Post(() =>
+                   {
+                       _players[id].updatePosition(x, y, rot, vx, vy, _client.Clock);
+                   });
+            }
+        }
 	}
 
 	public void onChat(Packet<IScenePeer> obj)
 	{
-		Debug.Log (obj.Stream);
+		Debug.Log (obj.ReadObject<string>());
 	}
 
 	public void onUpdateStatus(Packet<IScenePeer> obj)
@@ -126,83 +133,119 @@ public class GameManager : MonoBehaviour
 		{
 			while (reader.BaseStream.Position < reader.BaseStream.Length)
 			{
-				var id = reader.ReadUInt32();
+				var id = reader.ReadInt32();
 				var status = reader.ReadInt16();
+
+                Debug.Log("updating ship status");
 
 				switch (status)
 				{
 					case (0):
 						if (_players.ContainsKey(id))
-							_players[id].ship.GetComponent<Renderer>().enabled = true;
-						break;
-				case (1):
-					if (_players.ContainsKey(id))
-						_players[id].ship.GetComponent<Renderer>().enabled = false;
-					break;
-				case (2):
-					if (!_players.ContainsKey(id))
-					{
-						GameObject newShip = Instantiate(opponentShip);
-						Player newPlayer = new Player();
-
-						var red = reader.ReadSingle();
-						var blue = reader.ReadSingle();
-						var green = reader.ReadSingle();
-
-						newPlayer.id = id;
-						newPlayer.color_red = red;
-						newPlayer.color_blue = blue;
-						newPlayer.color_green = green;
-						newPlayer.ship = newShip;
-
-						newPlayer.ship.GetComponent<Renderer>().material.color = new Color(red, green, blue);
-						_players.Add(id, newPlayer);
-					}
-					break;
-				case (3):
-					if (_players.ContainsKey(id))
-					{
-						Destroy(_players[id].ship);
-						_players.Remove (id);
-					}
-					break;
+                        {
+                            StormancerActionHandler.Post(() =>
+                            {
+                                _players[id].ship.GetComponent<Renderer>().enabled = true;
+                            });
+                        }
+                        break;
+			    	case (1):
+                        if (_players.ContainsKey(id))
+                        {
+                            StormancerActionHandler.Post(() =>
+                            {
+                                _players[id].ship.GetComponent<Renderer>().enabled = false;
+                            });
+                        }
+				    	break;
 				}
-
 			}
-			reader.Close ();
 		}
 	}
+
+    public void onPlayerConnected(Packet<IScenePeer> packet)
+    {
+        var reader = new BinaryReader(packet.Stream);
+        while (reader.BaseStream.Position < reader.BaseStream.Length)
+        {
+
+            var id = reader.ReadInt32();
+            var status = reader.ReadInt32();
+            var red = reader.ReadSingle();
+            var blue = reader.ReadSingle();
+            var green = reader.ReadSingle();
+
+            if (_players.ContainsKey(id) == false && localPlayer.id != id)
+            {
+                StormancerActionHandler.Post(() =>
+                {
+                    GameObject newShip = Instantiate(opponentShip);
+                    Player newPlayer = new Player();
+
+                    newPlayer.id = id;
+                    newPlayer.color_red = red;
+                    newPlayer.color_blue = blue;
+                    newPlayer.color_green = green;
+                    newPlayer.ship = newShip;
+
+                    newPlayer.ship.GetComponent<Renderer>().material.color = new Color(red, green, blue);
+                    if (status == 1)
+                    {
+                        newPlayer.ship.GetComponent<Renderer>().enabled = false;
+                    }
+                    _players.TryAdd(id, newPlayer);
+                });
+            }
+        }
+    }
+
+    public void onPlayerDisconnected(Packet<IScenePeer> packet)
+    {
+        Player temp;
+        var reader = new BinaryReader(packet.Stream);
+        var id = reader.ReadInt32();
+
+        Debug.Log("a player quit the game");
+
+        if (_players.ContainsKey(id) && localPlayer.id != id)
+        {
+            StormancerActionHandler.Post(() =>
+            {
+                Destroy(_players[id].ship);
+                _players.TryRemove(id, out temp);
+            });
+        }
+    }
 
 	public void onGetId(Packet<IScenePeer> obj)
 	{
-		using (var reader = new BinaryReader(obj.Stream))
-		{
-			var id = reader.ReadUInt32();
-			reader.Close();
-			localPlayer.id = id;
-		}
+        var reader = new BinaryReader(obj.Stream);
+        var id = reader.ReadInt64();
+        localPlayer.id = id;
 	}
 
-	void Start()
-	{
-		_players = new Dictionary<uint, Player>();
-	}
-
+    private long _lastUpdate;
 	void Update()
 	{
-		if (_connected == true && _scene.Connected)
-		{
-			localPlayer.updatePositionFromShip();
-			_scene.SendPacket("update_position", s =>
-			            {
-				using (var writer = new BinaryWriter(s, Encoding.UTF8))
-				{
-					writer.Write (localPlayer.id);
-					writer.Write (localPlayer.pos_x);
-					writer.Write (localPlayer.pos_y);
-					writer.Write (localPlayer.rotation);
-				}
-			}, PacketPriority.MEDIUM_PRIORITY, PacketReliability.UNRELIABLE_SEQUENCED);
-		}
+        if (_connected == true)
+        {
+            if (_lastUpdate + 100 < _client.Clock)
+            {
+                _lastUpdate = _client.Clock;
+                localPlayer.updatePositionFromShip();
+                _scene.SendPacket("update_position", s =>
+               {
+                   var writer = new BinaryWriter(s, Encoding.UTF8);
+                   writer.Write(localPlayer.pos_x);
+                   writer.Write(localPlayer.pos_y);
+                   writer.Write(localPlayer.rotation);
+               }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.UNRELIABLE_SEQUENCED);
+            }
+        }
 	}
+
+    void OnApplicationQuit()
+    {
+        _client.Disconnect();
+    }
 }

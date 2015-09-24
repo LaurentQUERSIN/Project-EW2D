@@ -5,7 +5,7 @@ using Stormancer.Core;
 
 public class myGameObject
 {
-	public uint id = 0;
+	public long id = 0;
 	public string name = "";
 	public float pos_x = 0;
 	public float pos_y = 0;
@@ -57,12 +57,16 @@ public class Player : MovingObject
 	public override void updatePosition(float x, float y, float rot, float vx, float vy, long updateTime)
 	{
 		base.updatePosition(x, y, rot, vx, vy, updateTime);
-		ship.transform.position.Set(x, y, 0f);
+		ship.transform.position = new Vector3(x, y, 0f);
 		ship.transform.rotation.eulerAngles.Set(0f, 0f, rot);
-		ship.GetComponent<Rigidbody>().AddForce(new Vector3(vx, vy, 0f));
+        if (vx < 0.001f)
+            vx = 0;
+        if (vy < 0.001f)
+            vy = 0;
+        ship.GetComponent<Rigidbody>().AddForce(new Vector3(vx, vy, 0f));
 	}
 	
-	public Player(uint pId, string pName, long updateTime)
+	public Player(long pId, string pName, long updateTime)
 	{
 		id = pId;
 		name = pName;
@@ -101,7 +105,7 @@ public class Bullet : MovingObject
 		return false;
 	}
 	
-	public Bullet(uint object_id, Player player, long updateTime)
+	public Bullet(long object_id, Player player, long updateTime)
 	{
 		id = object_id;
 		name = player.name + " bullet " + id.ToString();

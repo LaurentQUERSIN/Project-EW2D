@@ -1,0 +1,71 @@
+Initialize engine version: 5.1.3f1 (b0a23b31c3d8)
+GfxDevice: creating device client; threaded=1
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.0]
+    Renderer: AMD Radeon HD 7500M/7600M Series (ID=0x6841)
+    Vendor:   ATI
+    VRAM:     1004 MB
+Begin MonoManager ReloadAssembly
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\Assembly-CSharp-firstpass.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\Assembly-CSharp-firstpass.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\Assembly-CSharp.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.UI.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.Analytics.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\UnityEngine.Analytics.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\System.Threading.dll (this message is harmless)
+Loading C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\System.Threading.dll into Unity Child Domain
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\System.Core.dll (this message is harmless)
+- Completed reload, in  0.048 seconds
+desktop: 1920x1080 60Hz; virtual: 1920x1080 at 0,0
+<RI> Initializing input.
+<RI> Input initialized.
+<RI> Initialized touch support.
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\System.dll (this message is harmless)
+Platform assembly: C:\dev\unity\stormancer\project EW2D\Project-EW2D\builds\EW2D_Data\Managed\Mono.Security.dll (this message is harmless)
+starting connection
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+config complete
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+connection failed, cannot get scene : AggregateException_ctor_DefaultMessage
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+starting connection
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+config complete
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+configuring routes
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+connecting to remote scene
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+connection successful
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+efef a rejoint le combat !
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 65)
+
+NullReferenceException: Object reference not set to an instance of an object
+  at GameManager.OnApplicationQuit () [0x00000] in <filename unknown>:0 
+ 
+(Filename:  Line: -1)
+
