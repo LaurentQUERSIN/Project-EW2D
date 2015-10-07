@@ -24,15 +24,14 @@ public class MovingObject : myGameObject
 	public float last_x = 0;
 	public float last_y = 0;
 	
-	public virtual void updatePosition(float x, float y, float rot, float vx, float vy, long updateTime)
+	public virtual void updatePosition(float x, float y, long updateTime)
 	{
+        vect_x = pos_x - last_x;
+        vect_y = pos_y - last_y;
 		last_x = pos_x;
 		last_y = pos_y;
 		pos_x = x;
 		pos_y = y;
-		rotation = rot;
-		vect_x = vx;
-		vect_y = vy;
 		lastUpdate = updateTime;
 	}
 }
@@ -54,16 +53,17 @@ public class Player : MovingObject
 
 	}
 
-	public override void updatePosition(float x, float y, float rot, float vx, float vy, long updateTime)
+	public override void updatePosition(float x, float y, long updateTime)
 	{
-		base.updatePosition(x, y, rot, vx, vy, updateTime);
-		ship.transform.position = new Vector3(x, y, 0f);
-		ship.transform.rotation.eulerAngles.Set(0f, 0f, rot);
-        if (vx < 0.001f)
-            vx = 0;
-        if (vy < 0.001f)
-            vy = 0;
-        ship.GetComponent<Rigidbody>().AddForce(new Vector3(vx, vy, 0f));
+		base.updatePosition(x, y, updateTime);
+		//ship.transform.position = new Vector3(x, y, 0f);
+		//ship.transform.rotation.eulerAngles.Set(0f, 0f, rot);
+  //      if (vx < 0.001f)
+  //          vx = 0;
+  //      if (vy < 0.001f)
+  //          vy = 0;
+  //      ship.GetComponent<Rigidbody>().AddForce(new Vector3(vx, vy, 0f));
+        ship.GetComponent<Rigidbody>().MovePosition(new Vector3(x, y, 0f));
 	}
 	
 	public Player(long pId, string pName, long updateTime)

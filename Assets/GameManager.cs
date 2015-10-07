@@ -108,15 +108,12 @@ public class GameManager : MonoBehaviour
             var id = reader.ReadInt64();
             var x = reader.ReadSingle();
             var y = reader.ReadSingle();
-            var rot = reader.ReadSingle();
-            var vx = reader.ReadSingle();
-            var vy = reader.ReadSingle();
 
             if (_players.ContainsKey(id) == true && localPlayer.id != id)
             {
                 StormancerActionHandler.Post(() =>
                    {
-                       _players[id].updatePosition(x, y, rot, vx, vy, _client.Clock);
+                       _players[id].updatePosition(x, y, _client.Clock);
                    });
             }
         }
