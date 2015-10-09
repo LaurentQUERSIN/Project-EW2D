@@ -55,18 +55,19 @@ public class Player : MovingObject
 
 	public override void updatePosition(float x, float y, long updateTime)
 	{
-		base.updatePosition(x, y, updateTime);
-		//ship.transform.position = new Vector3(x, y, 0f);
-		//ship.transform.rotation.eulerAngles.Set(0f, 0f, rot);
-  //      if (vx < 0.001f)
-  //          vx = 0;
-  //      if (vy < 0.001f)
-  //          vy = 0;
-  //      ship.GetComponent<Rigidbody>().AddForce(new Vector3(vx, vy, 0f));
-        ship.GetComponent<Rigidbody>().MovePosition(new Vector3(x, y, 0f));
-	}
-	
-	public Player(long pId, string pName, long updateTime)
+        //ship.transform.position = new Vector3(x, y, 0f);
+        //base.updatePosition(x, y, updateTime);
+        //if (vect_x < 0.001f)
+        //          vect_x = 0;
+        //if (vect_y < 0.001f)
+        //          vect_y = 0;
+        //ship.GetComponent<Rigidbody>().AddForce(new Vector3(vect_x, vect_y, 0f));
+        //ship.GetComponent<Rigidbody>().MovePosition(new Vector3(x, y, 0f));
+        //ship.transform.position = Vector3.Lerp(ship.transform.position, new Vector3(x, y, 0f), 0.5f);
+        ship.GetComponent<ShipInterpolator>().setNextPosition(new Vector3(x, y, 0f));
+    }
+
+    public Player(long pId, string pName, long updateTime)
 	{
 		id = pId;
 		name = pName;
@@ -94,27 +95,19 @@ public class Bullet : MovingObject
 {
 	public Weapon weapon = null;
 	public GameObject bullet = null;
-
 	
-	public bool isColliding(Player p, long time)
-	{
-		float x = pos_x + (vect_x * (weapon.speed * ((time - lastUpdate) / 1000f)));
-		float y = pos_y + (vect_y * (weapon.speed * ((time - lastUpdate) / 1000f)));
-		if (p.pos_x - 100 <= x && x <= p.pos_x + 100 && p.pos_y - 100 <= y && y <= p.pos_y + 100)
-			return true;
-		return false;
-	}
-	
-	public Bullet(long object_id, Player player, long updateTime)
+	public Bullet(long object_id, Player player, long updateTime, GameObject go)
 	{
 		id = object_id;
-		name = player.name + " bullet " + id.ToString();
-		rotation = player.rotation;
-		color_red = player.color_red;
-		color_blue = player.color_blue;
-		color_green = player.color_green;
 		weapon = player.weapon;
 		lastUpdate = updateTime;
+        bullet = go;
 	}
+
+    public void updatePosition(float x, float y, float vx, float vy, long updateTime)
+    {
+        bullet.transform.position = new Vector3(x, y, 0f);
+        bullet.GetComponent<Rigidbody>().AddForce(new Vector3(vx, vy, 0f));
+    }
 }
 

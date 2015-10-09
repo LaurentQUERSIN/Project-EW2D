@@ -165,15 +165,19 @@ namespace Stormancer.Networking
 
         private void OnMessageReceived(RakNet.Packet packet)
         {
+            var messageId = packet.data[0];
             var connection = GetConnection(packet.guid);
-            var buffer = new byte[packet.data.Length];
-            packet.data.CopyTo(buffer, 0);
+            var stream = new MemoryStream((int)packet.length);
+            //var buffer = new byte[packet.data.Length];
+            stream.Write(packet.data, 0, (int)packet.length);
+            stream.Seek(0, SeekOrigin.Begin);
+            logger.Log(Stormancer.Diagnostics.LogLevel.Trace, "transport", "message received  at " + DateTime.Now + "." + DateTime.Now.Millisecond + ": " + string.Join(";", packet.data.Select(b=>b.ToString()).ToArray()));
             _peer.DeallocatePacket(packet);
             //logger.Trace("message arrived: [{0}]", string.Join(", ", buffer.Select(b => b.ToString()).ToArray()));
 
             var p = new Stormancer.Core.Packet(
                                connection,
-                               new MemoryStream(buffer));
+                               stream);
 
 
             this.PacketReceived(p);

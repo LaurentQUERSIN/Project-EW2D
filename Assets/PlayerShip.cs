@@ -1,58 +1,64 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.IO;
 using UnityEngine.UI;
+using Stormancer;
+using Stormancer.Core;
 
 public class PlayerShip : MonoBehaviour 
 {
-	public bool up;
-	public bool down;
-	public bool left;
-	public bool right;
-	public float speed;
+    public Camera myCamera;
+    public GameManager GM;
 
-	public void getKeys()
-	{
-		if (Input.GetKeyDown(KeyCode.Z))
-			up = true;
-		if (Input.GetKeyDown(KeyCode.S))
-			down = true;
-		if (Input.GetKeyDown(KeyCode.D))
-			right = true;
-		if (Input.GetKeyDown(KeyCode.Q))
-			left = true;
-		if (Input.GetKeyUp(KeyCode.Z))
-			up = false;
-		if (Input.GetKeyUp(KeyCode.S))
-			down = false;
-		if (Input.GetKeyUp(KeyCode.D))
-			right = false;
-		if (Input.GetKeyUp(KeyCode.Q))
-			left = false;
-	}
-
-
-
-	void Start ()
-	{
-		up = false;
-		down = false;
-		left = false;
-		right = false;
-	}
+    private float _lastUpdate;
 
 	void Update ()
 	{
 		if (this.GetComponent<GameManager>().gamePaused == false)
 		{
-			getKeys ();
-			if (up == true)
-				this.GetComponent<Rigidbody>().AddForce(0f, 1f * speed, 0f);
-			if (down == true)
-				this.GetComponent<Rigidbody>().AddForce(0f, -1f * speed, 0f);
-			if (left == true)
-				this.GetComponent<Rigidbody>().AddForce(-1f * speed, 0f, 0f);
-			if (right == true)
-				this.GetComponent<Rigidbody>().AddForce(1f * speed, 0f, 0f);
+            //this.transform.position = Vector3.Lerp(this.transform.position, nextPosition, 0.3f);
+
+
+
+
+
+            if (GM.scene != null && GM.scene.Connected == true && GM.client != null && _lastUpdate + 50 < GM.client.Clock)
+            {
+                if (Input.GetKeyDown(KeyCode.Z) == true)
+                    GM.scene.SendPacket("enable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(0); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+                if (Input.GetKeyDown(KeyCode.S) == true)
+                    GM.scene.SendPacket("enable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(1); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+                if (Input.GetKeyDown(KeyCode.Q) == true)
+                    GM.scene.SendPacket("enable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(2); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+                if (Input.GetKeyDown(KeyCode.D) == true)
+                    GM.scene.SendPacket("enable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(3); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+
+                if (Input.GetKeyUp(KeyCode.Z) == true)
+                    GM.scene.SendPacket("disable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(0); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+                if (Input.GetKeyUp(KeyCode.S) == true)
+                    GM.scene.SendPacket("disable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(1); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+                if (Input.GetKeyUp(KeyCode.Q) == true)
+                    GM.scene.SendPacket("disable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(2); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+                if (Input.GetKeyUp(KeyCode.D) == true)
+                    GM.scene.SendPacket("disable_action", s => { var writer = new BinaryWriter(s, System.Text.Encoding.UTF8); writer.Write(3); }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+
+                if (Input.GetMouseButton(0))
+                {
+                    GM.scene.SendPacket("firing_weapon", s =>
+                    {
+                        var writer = new BinaryWriter(s, System.Text.Encoding.UTF8);
+                        Ray ray;
+                        ray = myCamera.ScreenPointToRay(Input.mousePosition);
+                        RaycastHit hit;
+                        Physics.Raycast(ray, out hit);
+
+                        writer.Write(GM.localPlayer.id);
+                        writer.Write(hit.point.x);
+                        writer.Write(hit.point.y);
+                        writer.Write(GM.client.Clock);
+                    });
+                }
+            }
 		}
 	}
 }

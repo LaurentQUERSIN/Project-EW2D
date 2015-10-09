@@ -116,9 +116,9 @@ namespace Stormancer
             }
         }
 
-        private RakNetTransport DefaultTransportFactory(IDictionary<string, object> parameters) 
+        private RakNetTransport DefaultTransportFactory(IDependencyResolver resolver) 
         {
-            return new RakNetTransport((ILogger)(parameters["ILogger"]));
+            return new RakNetTransport(resolver.GetComponent<ILogger>());
         }
 
         /// <summary>
@@ -142,7 +142,7 @@ namespace Stormancer
         /// <summary>
         /// Gets or sets the transport to be used by the client.
         /// </summary>
-        public Func<IDictionary<string,object>,ITransport> TransportFactory { get; set; }
+        public Func<IDependencyResolver,ITransport> TransportFactory { get; set; }
 
 
         /// <summary>

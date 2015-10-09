@@ -17,11 +17,14 @@ public class GameManager : MonoBehaviour
 	public ConnexionPanel 				connexionPanel;
 	public Player 						localPlayer;
 	public GameObject 					playerShip;
+    public GameObject                   playerMarker;
 	public GameObject					opponentShip;
+    public GameObject                   bulletToSpawn;
 
-	private Scene 						_scene;
-	private Client 						_client;
+	public Scene 						scene { get; private set; }
+	public Client 						client { get; private set; }
 	private ConcurrentDictionary<long, Player>	_players = new ConcurrentDictionary<long, Player>();
+    private ConcurrentDictionary<long, Bullet> _bullets = new ConcurrentDictionary<long, Bullet>();
     private bool _connecting = false;
     private bool _connected = false;
 
@@ -38,14 +41,15 @@ public class GameManager : MonoBehaviour
             Debug.Log("starting connection");
             UniRx.MainThreadDispatcher.Initialize();
             var Config = ClientConfiguration.ForAccount("7794da14-4d7d-b5b5-a717-47df09ca8492", "projectew2d");
-            var client = new Client(Config);
-            _client = client;
+            var newClient = new Client(Config);
+            client = newClient;
 
             localPlayer = new Player(0, connexionPanel.username.text, 0);
             localPlayer.ship = playerShip;
             localPlayer.color_red = connexionPanel.redSlider.value;
             localPlayer.color_blue = connexionPanel.blueSlider.value;
             localPlayer.color_green = connexionPanel.greenSlider.value;
+            playerMarker.GetComponent<Renderer>().material.color = new Color(localPlayer.color_red, localPlayer.color_green, localPlayer.color_blue);
             playerShip.GetComponent<Renderer>().material.color = new Color(localPlayer.color_red, localPlayer.color_green, localPlayer.color_blue);
 
             Debug.Log("config complete");
@@ -62,19 +66,21 @@ public class GameManager : MonoBehaviour
                }
                else
                {
-                   var scene = task.Result;
-                   _scene = scene;
+                   var newScene = task.Result;
+                   scene = newScene;
                    Debug.Log("configuring routes");
-                   _scene.AddRoute("chat", onChat);
-                   _scene.AddRoute("update_position", onUpdatePosition);
-                   _scene.AddRoute("player_connected", onPlayerConnected);
-                   _scene.AddRoute("player_disconnected", onPlayerDisconnected);
-                   _scene.AddRoute("get_id", onGetId);
-                   _scene.AddRoute("update_status", onUpdateStatus);
+                   scene.AddRoute("chat", onChat);
+                   scene.AddRoute("update_position", onUpdatePosition);
+                   scene.AddRoute("player_connected", onPlayerConnected);
+                   scene.AddRoute("player_disconnected", onPlayerDisconnected);
+                   scene.AddRoute("get_id", onGetId);
+                   scene.AddRoute("update_status", onUpdateStatus);
+                   scene.AddRoute("spawn_bullet", onBulletSpawn);
+                   scene.AddRoute("destroy_bullet", onBulletDestroyed);
                    Debug.Log("connecting to remote scene");
-                   _scene.Connect().ContinueWith(t =>
+                   scene.Connect().ContinueWith(t =>
                    {
-                       if (_scene.Connected)
+                       if (scene.Connected)
                        {
                            _connected = true;
                            _connecting = false;
@@ -82,6 +88,7 @@ public class GameManager : MonoBehaviour
                            StormancerActionHandler.Post(() => {
                                connexionPanel.gameObject.SetActive(false);
                                playerShip.GetComponent<Renderer>().enabled = true;
+                               playerMarker.GetComponent<Renderer>().enabled = true;
                                gamePaused = false;
                                _connected = true;
                            });
@@ -109,12 +116,19 @@ public class GameManager : MonoBehaviour
             var x = reader.ReadSingle();
             var y = reader.ReadSingle();
 
-            if (_players.ContainsKey(id) == true && localPlayer.id != id)
+            if (_players.ContainsKey(id) == true)
             {
                 StormancerActionHandler.Post(() =>
                    {
-                       _players[id].updatePosition(x, y, _client.Clock);
+                       _players[id].updatePosition(x, y, client.Clock);
                    });
+            }
+            else if (localPlayer.id == id)
+            {
+                StormancerActionHandler.Post(() =>
+                {
+                    localPlayer.updatePosition(x, y, client.Clock);
+                });
             }
         }
 	}
@@ -221,28 +235,70 @@ public class GameManager : MonoBehaviour
         localPlayer.id = id;
 	}
 
-    private long _lastUpdate;
-	void Update()
-	{
-        if (_connected == true)
+    private void onBulletSpawn(Packet<IScenePeer> packet)
+    {
+        Debug.Log("receiving bullet");
+        var reader = new BinaryReader(packet.Stream);
+        var id = reader.ReadInt64();
+        var pid = reader.ReadInt64();
+        var x = reader.ReadSingle();
+        var y = reader.ReadSingle();
+        var vx = reader.ReadSingle();
+        var vy = reader.ReadSingle();
+
+        Debug.Log(id + " | " + pid + " | " + x + " | " + y + " | " + vx + " | " + vy);
+        if (_players.ContainsKey(pid) == true && _bullets.ContainsKey(id) == false)
         {
-            if (_lastUpdate + 100 < _client.Clock)
+            Debug.Log("new bullet received");
+            StormancerActionHandler.Post(() =>
             {
-                _lastUpdate = _client.Clock;
-                localPlayer.updatePositionFromShip();
-                _scene.SendPacket("update_position", s =>
-               {
-                   var writer = new BinaryWriter(s, Encoding.UTF8);
-                   writer.Write(localPlayer.pos_x);
-                   writer.Write(localPlayer.pos_y);
-                   writer.Write(localPlayer.rotation);
-               }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.UNRELIABLE_SEQUENCED);
-            }
+                Player temp = _players[pid];
+                GameObject bulletGO = Instantiate(bulletToSpawn);
+                bulletGO.GetComponent<Renderer>().material.color = temp.ship.GetComponent<Renderer>().material.color;
+                bulletGO.GetComponentInChildren<Light>().color = bulletGO.GetComponent<Renderer>().material.color;
+
+                Bullet bullet = new Bullet(id, temp, client.Clock, bulletGO);
+                bullet.updatePosition(x, y, vx, vy, client.Clock);
+                _bullets.TryAdd(id, bullet);
+            });
         }
-	}
+        else if (pid == localPlayer.id && _bullets.ContainsKey(id) == false)
+        {
+            Debug.Log("new bullet received");
+            StormancerActionHandler.Post(() =>
+            {
+                Player temp = localPlayer;
+                GameObject bulletGO = Instantiate(bulletToSpawn);
+                bulletGO.GetComponent<Renderer>().material.color = temp.ship.GetComponent<Renderer>().material.color;
+                bulletGO.GetComponentInChildren<Light>().color = bulletGO.GetComponent<Renderer>().material.color;
+
+                Bullet bullet = new Bullet(id, temp, client.Clock, bulletGO);
+                bullet.updatePosition(x, y, vx, vy, client.Clock);
+                _bullets.TryAdd(id, bullet);
+            });
+        }
+    }
+
+    private void onBulletDestroyed(Packet<IScenePeer> packet)
+    {
+        var reader = new BinaryReader(packet.Stream);
+        var id = reader.ReadInt64();
+
+        if (_bullets.ContainsKey(id))
+        {
+            Debug.Log("bullet destroyed");
+            StormancerActionHandler.Post(() =>
+            {
+                Bullet temp;
+                Destroy(_bullets[id].bullet);
+                _bullets.TryRemove(id, out temp);
+            });
+        }
+    }
 
     void OnApplicationQuit()
     {
-        _client.Disconnect();
+        if (client != null)
+            client.Disconnect();
     }
 }
